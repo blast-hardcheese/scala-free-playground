@@ -74,12 +74,12 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
   def prog(interp: NaturalTransformation[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Id]): Int = {
     implicit def liftCP[T](value: ControlPanel[T]) = liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T](value)
     implicit def liftEC[T](value: ElevatorControl[T]) = liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T](value)
-    def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T]) = lifter(x)
+    implicit def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T]) = lifter(x)
 
     val _prog = for {
-      button <- lift(ButtonPressed)
-      currentFloor2 <- lift(GetFloor)
-      currentFloor <- lift(CurrentFloor)
+      button <- ButtonPressed
+      currentFloor2 <- GetFloor
+      currentFloor <- CurrentFloor
     } yield { println(button); currentFloor2 }
 
     runFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Int](_prog)(interp)
