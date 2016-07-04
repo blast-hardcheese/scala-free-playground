@@ -37,7 +37,7 @@ trait FreeCSupport {
     }
   }
 
-  implicit def combineNT[F[_], G[_], H[_]](implicit f: NaturalTransformation[F, H], g: NaturalTransformation[G, H]) = new NaturalTransformation[({ type FG[A] = Coproduct[F, G, A] })#FG, H] {
+  def combineNT[F[_], G[_], H[_]](implicit f: NaturalTransformation[F, H], g: NaturalTransformation[G, H]) = new NaturalTransformation[({ type FG[A] = Coproduct[F, G, A] })#FG, H] {
     def apply[A](fga: Coproduct[F, G, A]): H[A] = {
       fga.fold(f, g)
     }
