@@ -1,10 +1,11 @@
 import cats.Id
 import cats.arrow.NaturalTransformation
 import cats.data.Coproduct
+import cats.data.Xor
 import cats.free.{ Coyoneda, Free }
 import cats.implicits._
 
-import scala.language.higherKinds
+import scala.language.{ higherKinds, implicitConversions }
 
 import Coproduct.{ leftc, rightc }
 
@@ -34,6 +35,12 @@ trait FreeCSupport {
       fga.fold(f, g)
     }
   }
+
+  implicit def liftXorL[F[_], G[_], T](x: F[T]): F[T] Xor G[T] = Xor.left(x)
+  implicit def liftXorR[F[_], G[_], T](x: G[T]): F[T] Xor G[T] = Xor.right(x)
+
+  implicit def liftCoL[F[_], G[_], T](x: F[T]): Coproduct[F, G, T] = Coproduct(x)
+  implicit def liftCoR[F[_], G[_], T](x: G[T]): Coproduct[F, G, T] = Coproduct(x)
 }
 
 trait FreeCTest1Interp {
@@ -65,10 +72,14 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
 
   // Works when specifying all types everywhere.
   def prog(interp: NaturalTransformation[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Id]): Int = {
+    implicit def liftCP[T](value: ControlPanel[T]) = liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T](value)
+    implicit def liftEC[T](value: ElevatorControl[T]) = liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T](value)
+    def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T]) = lifter(x)
+
     val _prog = for {
-      button <- liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Button](leftc(ButtonPressed))
-      currentFloor2 <- liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Int](rightc(GetFloor))
-      currentFloor <- liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Int](leftc(CurrentFloor))
+      button <- lift(ButtonPressed)
+      currentFloor2 <- lift(GetFloor)
+      currentFloor <- lift(CurrentFloor)
     } yield { println(button); currentFloor2 }
 
     runFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Int](_prog)(interp)
