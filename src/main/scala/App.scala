@@ -1,13 +1,29 @@
 import cats.Id
+import cats.arrow.Arrow
 import cats.arrow.NaturalTransformation
 import cats.data.Coproduct
-import cats.data.Xor
+import cats.data.{ Kleisli, Xor, XorT }
 import cats.free.{ Coyoneda, Free }
 import cats.implicits._
 
 import scala.language.{ higherKinds, implicitConversions }
 
 import Coproduct.{ leftc, rightc }
+
+object ArrowTest1 extends App {
+  val fab: (Double => Double) = _ + 0
+  val f: (Int => Double) = _.toDouble / 2
+  val g: (Double => String) = x => (x * 3).toString
+  val dimapArrow = Arrow[Function1].dimap(fab)(f)(g)
+  println(dimapArrow(1))
+}
+
+object KleisliTest1 extends App {
+  val getInput: Kleisli[Option, Unit,  Int] = Kleisli(Unit => Option(5))
+  val prompt:   Kleisli[Option,  Int, Unit] = Kleisli(i => Option(println(s"Please enter $i:")))
+  val res:      Kleisli[Option, Unit, Unit] = getInput andThen prompt
+  res.run(())
+}
 
 trait FreeCSupport {
   type FreeC[F[_], A] = Free[Coyoneda[F,?], A]
