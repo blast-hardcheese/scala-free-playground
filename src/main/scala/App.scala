@@ -17,6 +17,13 @@ case object StopEnabled extends ControlPanel[Unit]
 case object StopDisabled extends ControlPanel[Unit]
 case object CurrentFloor extends ControlPanel[Int]
 
+sealed trait CallButton[T]
+case class CallElevator(floor: Int) extends CallButton[Unit]
+
+sealed trait MotorControl[T]
+case object GetSpeed extends MotorControl[Int]
+case class SetSpeed(x: Int) extends MotorControl[Unit]
+
 sealed trait ElevatorControl[T]
 case object GetFloor extends ElevatorControl[Int]
 case class QueueFloor(x: Int) extends ElevatorControl[Unit]
@@ -62,7 +69,6 @@ trait FreeCTest1Interp {
 }
 
 object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
-  // Works, using FreeC only, no Coproduct
   val prog1: FreeC[ControlPanel, Int] = for {
     button <- liftFC(ButtonPressed)
     _ <- liftFC(StopEnabled)
@@ -70,11 +76,14 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
     currentFloor <- liftFC(CurrentFloor)
   } yield { println(button); currentFloor }
 
-  // Works when specifying all types everywhere.
-  def prog(interp: NaturalTransformation[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Id]): Int = {
-    implicit def liftCP[T](value: ControlPanel[T]) = liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T](value)
-    implicit def liftEC[T](value: ElevatorControl[T]) = liftFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T](value)
-    implicit def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, T]) = lifter(x)
+  type Program[T] = Coproduct[ControlPanel, ElevatorControl, T]
+
+  implicit def liftCP[T](value: ControlPanel[T]) =    liftFC[Program, T](value)
+  implicit def liftEC[T](value: ElevatorControl[T]) = liftFC[Program, T](value)
+
+  implicit def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[Program, T]) = lifter(x)
+
+  def prog(interp: NaturalTransformation[Program, Id]): Int = {
 
     val _prog = for {
       button <- ButtonPressed
@@ -82,12 +91,11 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
       currentFloor <- CurrentFloor
     } yield { println(button); currentFloor2 }
 
-    runFC[({ type CE[A] = Coproduct[ControlPanel, ElevatorControl, A] })#CE, Int](_prog)(interp)
+    runFC(_prog)(interp)
   }
-  println(prog(combineNT[ControlPanel, ElevatorControl, Id]))
 
-  // Simple example of the above
-  val coValue = Coyoneda.lift[({ type FG[A] = Coproduct[ControlPanel, ElevatorControl, A] })#FG, Button](leftc(ButtonPressed))
+  val coValue = Coyoneda.lift[Program, Button](leftc(ButtonPressed))
   val res = coValue.transform(combineNT).run
   println(res)
+  println(prog(combineNT[ControlPanel, ElevatorControl, Id]))
 }
