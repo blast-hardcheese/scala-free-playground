@@ -9,25 +9,6 @@ import scala.language.{ higherKinds, implicitConversions }
 
 import Coproduct.{ leftc, rightc }
 
-case class Button(label: String)
-
-sealed trait ControlPanel[T]
-case object ButtonPressed extends ControlPanel[Button]
-case object StopEnabled extends ControlPanel[Unit]
-case object StopDisabled extends ControlPanel[Unit]
-case object CurrentFloor extends ControlPanel[Int]
-
-sealed trait CallButton[T]
-case class CallElevator(floor: Int) extends CallButton[Unit]
-
-sealed trait MotorControl[T]
-case object GetSpeed extends MotorControl[Int]
-case class SetSpeed(x: Int) extends MotorControl[Unit]
-
-sealed trait ElevatorControl[T]
-case object GetFloor extends ElevatorControl[Int]
-case class QueueFloor(x: Int) extends ElevatorControl[Unit]
-
 trait FreeCSupport {
   type FreeC[F[_], A] = Free[({ type CoF[T] = Coyoneda[F,T] })#CoF,A]
   def liftFC[F[_], A](value: F[A]): FreeC[F, A] = Free.liftF[({ type CoF[α] = Coyoneda[F, α] })#CoF, A](Coyoneda.lift[F, A](value))
@@ -49,6 +30,25 @@ trait FreeCSupport {
   implicit def liftCoL[F[_], G[_], T](x: F[T]): Coproduct[F, G, T] = Coproduct(x)
   implicit def liftCoR[F[_], G[_], T](x: G[T]): Coproduct[F, G, T] = Coproduct(x)
 }
+
+case class Button(label: String)
+
+sealed trait ControlPanel[T]
+case object ButtonPressed extends ControlPanel[Button]
+case object StopEnabled extends ControlPanel[Unit]
+case object StopDisabled extends ControlPanel[Unit]
+case object CurrentFloor extends ControlPanel[Int]
+
+sealed trait CallButton[T]
+case class CallElevator(floor: Int) extends CallButton[Unit]
+
+sealed trait MotorControl[T]
+case object GetSpeed extends MotorControl[Int]
+case class SetSpeed(x: Int) extends MotorControl[Unit]
+
+sealed trait ElevatorControl[T]
+case object GetFloor extends ElevatorControl[Int]
+case class QueueFloor(x: Int) extends ElevatorControl[Unit]
 
 trait FreeCTest1Interp {
   implicit val controlPanelInterp = new NaturalTransformation[ControlPanel, Id] {
