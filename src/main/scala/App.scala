@@ -99,12 +99,12 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
   def prog(interp: NaturalTransformation[Program, Id]): Int = {
 
     val _prog = for {
-      button <- ButtonPressed
+      button        <- ButtonPressed
       currentFloor2 <- GetFloor
-      speed <- GetSpeed
-      currentFloor <- CurrentFloor
-      _ <- CallElevator(currentFloor2 + 1)
-    } yield { println(button); currentFloor2 }
+      speed         <- GetSpeed
+      currentFloor  <- CurrentFloor
+      _             <- CallElevator(currentFloor2 + 1)
+    } yield currentFloor2
 
     runFC(_prog)(interp)
   }
