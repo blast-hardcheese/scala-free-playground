@@ -10,15 +10,15 @@ import scala.language.{ higherKinds, implicitConversions }
 import Coproduct.{ leftc, rightc }
 
 trait FreeCSupport {
-  type FreeC[F[_], A] = Free[({ type CoF[T] = Coyoneda[F,T] })#CoF,A]
-  def liftFC[F[_], A](value: F[A]): FreeC[F, A] = Free.liftF[({ type CoF[α] = Coyoneda[F, α] })#CoF, A](Coyoneda.lift[F, A](value))
+  type FreeC[F[_], A] = Free[Coyoneda[F,?], A]
+  def liftFC[F[_], A](value: F[A]): FreeC[F, A] = Free.liftF[Coyoneda[F, ?], A](Coyoneda.lift[F, A](value))
   def runFC[F[_], A](prog: FreeC[F, A])(implicit interp: NaturalTransformation[F, Id]): A = {
     prog.go { sfsa: Coyoneda[F, FreeC[F,A]] =>
       sfsa.transform(interp).run
     }
   }
 
-  def combineNT[F[_], G[_], H[_]](implicit f: NaturalTransformation[F, H], g: NaturalTransformation[G, H]) = new NaturalTransformation[({ type FG[A] = Coproduct[F, G, A] })#FG, H] {
+  def combineNT[F[_], G[_], H[_]](implicit f: NaturalTransformation[F, H], g: NaturalTransformation[G, H]) = new NaturalTransformation[Coproduct[F, G, ?], H] {
     def apply[A](fga: Coproduct[F, G, A]): H[A] = {
       fga.fold(f, g)
     }
