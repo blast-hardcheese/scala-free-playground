@@ -69,13 +69,6 @@ trait FreeCTest1Interp {
 }
 
 object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
-  val prog1: FreeC[ControlPanel, Int] = for {
-    button <- liftFC(ButtonPressed)
-    _ <- liftFC(StopEnabled)
-    _ <- liftFC(StopDisabled)
-    currentFloor <- liftFC(CurrentFloor)
-  } yield { println(button); currentFloor }
-
   type Program[T] = Coproduct[ControlPanel, ElevatorControl, T]
 
   implicit def liftCP[T](value: ControlPanel[T]) =    liftFC[Program, T](value)
@@ -94,8 +87,5 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
     runFC(_prog)(interp)
   }
 
-  val coValue = Coyoneda.lift[Program, Button](leftc(ButtonPressed))
-  val res = coValue.transform(combineNT).run
-  println(res)
   println(prog(combineNT[ControlPanel, ElevatorControl, Id]))
 }
