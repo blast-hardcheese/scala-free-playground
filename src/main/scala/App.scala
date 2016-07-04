@@ -10,11 +10,38 @@ import scala.language.{ higherKinds, implicitConversions }
 
 import Coproduct.{ leftc, rightc }
 
+case class SemanticArrow[A, B](f: A => B, label: Option[String]) {
+  def apply(a: A): B = f(a)
+}
+
+object SemanticArrow {
+  implicit val arrow = new Arrow[SemanticArrow] {
+    def lift[A,B](f: A => B): SemanticArrow[A, B] = SemanticArrow(f, None)
+
+    def first[A, B, C](fa: SemanticArrow[A,B]): SemanticArrow[(A, C),(B, C)] = {
+      SemanticArrow[(A, C), (B, C)]({ case (a,c) => (fa.f(a), c) }, fa.label.map(label => s"$label, on the first"))
+    }
+
+    // Members declared in cats.arrow.Category
+    def id[A]: SemanticArrow[A,A] = SemanticArrow(identity, None)
+
+    def compose[A,B,C](f: SemanticArrow[B,C], g: SemanticArrow[A,B]): SemanticArrow[A,C] = {
+      SemanticArrow(g.f andThen f.f, (for { lg <- g.label; lf <- f.label } yield Some(s"${lg} -> ${lf}")).getOrElse(g.label <+> f.label))
+    }
+  }
+
+  implicit class LabelSyntax[A, B](sa: SemanticArrow[A, B]) {
+    def ?(label: String): SemanticArrow[A, B] = sa.copy(label = Some(label))
+  }
+  def lift[A, B](f: A => B)(label: String): SemanticArrow[A, B] = Arrow[SemanticArrow].lift(f) ? label
+}
+
 object ArrowTest1 extends App {
-  val fab: (Double => Double) = _ + 0
+  val fab = Arrow[SemanticArrow].lift[Double, Double](_ + 3) ? "Add three to a double"
   val f: (Int => Double) = _.toDouble / 2
   val g: (Double => String) = x => (x * 3).toString
-  val dimapArrow = Arrow[Function1].dimap(fab)(f)(g)
+  val dimapArrow = Arrow[SemanticArrow].dimap(fab)(f)(g)
+  println(fab.label)
   println(dimapArrow(1))
 }
 
