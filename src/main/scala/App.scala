@@ -66,13 +66,31 @@ trait FreeCTest1Interp {
       case QueueFloor(floor) => ()
     }
   }
+
+  implicit val callButtonInterp = new NaturalTransformation[CallButton, Id] {
+    def apply[A](fa: CallButton[A]): Id[A] = fa match {
+      case CallElevator(floor) => ()
+    }
+  }
+
+  implicit val motorControlInterp = new NaturalTransformation[MotorControl, Id] {
+    def apply[A](fa: MotorControl[A]): Id[A] = fa match {
+      case GetSpeed => 5
+      case SetSpeed(speed) => ()
+    }
+  }
 }
 
 object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
-  type Program[T] = Coproduct[ControlPanel, ElevatorControl, T]
+  type ProgramCPEC[T] = Coproduct[ControlPanel, ElevatorControl, T]
+  type ProgramCBP1[T] = Coproduct[CallButton, ProgramCPEC, T]
+  type ProgramMCP2[T] = Coproduct[MotorControl, ProgramCBP1, T]
+  type Program[T]     = ProgramMCP2[T]
 
-  implicit def liftCP[T](value: ControlPanel[T]) =    liftFC[Program, T](value)
-  implicit def liftEC[T](value: ElevatorControl[T]) = liftFC[Program, T](value)
+  implicit def liftCB[T](value: CallButton[T]) =      liftFC[Program, T](liftCoR(value))
+  implicit def liftCP[T](value: ControlPanel[T]) =    liftFC[Program, T](liftCoR(liftCoR(value)))
+  implicit def liftEC[T](value: ElevatorControl[T]) = liftFC[Program, T](liftCoR(liftCoR(value)))
+  implicit def liftMC[T](value: MotorControl[T]) =    liftFC[Program, T](value)
 
   implicit def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[Program, T]) = lifter(x)
 
@@ -81,11 +99,14 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
     val _prog = for {
       button <- ButtonPressed
       currentFloor2 <- GetFloor
+      speed <- GetSpeed
       currentFloor <- CurrentFloor
+      _ <- CallElevator(currentFloor2 + 1)
     } yield { println(button); currentFloor2 }
 
     runFC(_prog)(interp)
   }
 
-  println(prog(combineNT[ControlPanel, ElevatorControl, Id]))
+  // Just figure it out, please.
+  println(prog(combineNT(implicitly, combineNT(implicitly, combineNT))))
 }
