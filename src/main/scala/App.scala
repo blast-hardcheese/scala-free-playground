@@ -82,15 +82,17 @@ trait FreeCTest1Interp {
 }
 
 object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
-  type ProgramCPEC[T] = Coproduct[ControlPanel, ElevatorControl, T]
-  type ProgramCBP1[T] = Coproduct[CallButton, ProgramCPEC, T]
-  type ProgramMCP2[T] = Coproduct[MotorControl, ProgramCBP1, T]
-  type Program[T]     = ProgramMCP2[T]
-
-  implicit def liftCB[T](value: CallButton[T]) =      liftFC[Program, T](liftCoR(value))
+  type ProgramL1[T] = Coproduct[ControlPanel, ElevatorControl, T]
   implicit def liftCP[T](value: ControlPanel[T]) =    liftFC[Program, T](liftCoR(liftCoR(value)))
   implicit def liftEC[T](value: ElevatorControl[T]) = liftFC[Program, T](liftCoR(liftCoR(value)))
+
+  type ProgramL2[T] = Coproduct[CallButton, ProgramL1, T]
+  implicit def liftCB[T](value: CallButton[T]) =      liftFC[Program, T](liftCoR(value))
+
+  type ProgramMCP2[T] = Coproduct[MotorControl, ProgramL2, T]
   implicit def liftMC[T](value: MotorControl[T]) =    liftFC[Program, T](value)
+
+  type Program[T]     = ProgramMCP2[T]
 
   implicit def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[Program, T]) = lifter(x)
 
