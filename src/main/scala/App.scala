@@ -1,7 +1,7 @@
-import cats.{ Id, Monad }
+import cats.{ Functor, Id, Monad }
 import cats.arrow.Arrow
 import cats.arrow.NaturalTransformation
-import cats.data.{ Coproduct, Kleisli, Xor, XorT }
+import cats.data.{ Coproduct, Kleisli, WriterT, Xor, XorT }
 import cats.free.{ Coyoneda, Free }
 import cats.implicits._
 
@@ -94,14 +94,22 @@ case object GetFloor extends ElevatorControl[Int]
 case class QueueFloor(x: Int) extends ElevatorControl[Unit]
 
 trait FreeCTest1Interp {
-  implicit val controlPanelInterp = new NaturalTransformation[ControlPanel, Id] {
-    def apply[A](fa: ControlPanel[A]): Id[A] = fa match {
-      case ButtonPressed => Button("Floor 2")
-      case StopEnabled => println("Stop enabled")
-      case StopDisabled => println("Stop disabled")
-      case CurrentFloor => 2
-    }
+  type LoggingId[A] = WriterT[Id, List[String], A]
+
+  def log[T](value: T)(msg: String)(implicit F: Functor[Id]): LoggingId[T] = WriterT.putT[Id, List[String], T](value)(List("Nothing"))
+
+  implicit val loggingIdInterp = new NaturalTransformation[LoggingId, Id] {
+    def apply[A](fa: LoggingId[A]): Id[A] = { println(s"Logged: ${fa.written}"); fa.value }
   }
+
+  implicit val controlPanelInterp: NaturalTransformation[ControlPanel, Id] = new NaturalTransformation[ControlPanel, LoggingId] {
+    def apply[A](fa: ControlPanel[A]): LoggingId[A] = fa match {
+      case ButtonPressed => log(Button("Floor 2"))("Pressed floor 2")
+      case StopEnabled => log(())("Stop enabled")
+      case StopDisabled => log(())("Stop disabled")
+      case CurrentFloor => log(2)("Got current floor")
+    }
+  } andThen loggingIdInterp
 
   implicit val elevatorControlInterp = new NaturalTransformation[ElevatorControl, Id] {
     def apply[A](fa: ElevatorControl[A]): Id[A] = fa match {
