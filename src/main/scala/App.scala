@@ -97,6 +97,7 @@ trait FreeCTest1Interp {
   type LoggingId[A] = WriterT[Id, List[String], A]
 
   def log[T](value: T)(msg: String)(implicit F: Functor[Id]): LoggingId[T] = WriterT.putT[Id, List[String], T](value)(List("Nothing"))
+  implicit def noLog[T](value: T): LoggingId[T] = WriterT.putT[Id, List[String], T](value)(List.empty)
 
   implicit val loggingIdInterp = new NaturalTransformation[LoggingId, Id] {
     def apply[A](fa: LoggingId[A]): Id[A] = { println(s"Logged: ${fa.written}"); fa.value }
@@ -111,25 +112,25 @@ trait FreeCTest1Interp {
     }
   } andThen loggingIdInterp
 
-  implicit val elevatorControlInterp = new NaturalTransformation[ElevatorControl, Id] {
-    def apply[A](fa: ElevatorControl[A]): Id[A] = fa match {
+  implicit val elevatorControlInterp = new NaturalTransformation[ElevatorControl, LoggingId] {
+    def apply[A](fa: ElevatorControl[A]): LoggingId[A] = fa match {
       case GetFloor => 2
       case QueueFloor(floor) => ()
     }
-  }
+  } andThen loggingIdInterp
 
-  implicit val callButtonInterp = new NaturalTransformation[CallButton, Id] {
-    def apply[A](fa: CallButton[A]): Id[A] = fa match {
+  implicit val callButtonInterp = new NaturalTransformation[CallButton, LoggingId] {
+    def apply[A](fa: CallButton[A]): LoggingId[A] = fa match {
       case CallElevator(floor) => ()
     }
-  }
+  } andThen loggingIdInterp
 
-  implicit val motorControlInterp = new NaturalTransformation[MotorControl, Id] {
-    def apply[A](fa: MotorControl[A]): Id[A] = fa match {
+  implicit val motorControlInterp = new NaturalTransformation[MotorControl, LoggingId] {
+    def apply[A](fa: MotorControl[A]): LoggingId[A] = fa match {
       case GetSpeed => 5
       case SetSpeed(speed) => ()
     }
-  }
+  } andThen loggingIdInterp
 }
 
 object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
