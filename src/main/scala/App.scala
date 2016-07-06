@@ -1,8 +1,7 @@
-import cats.Id
+import cats.{ Id, Monad }
 import cats.arrow.Arrow
 import cats.arrow.NaturalTransformation
-import cats.data.Coproduct
-import cats.data.{ Kleisli, Xor, XorT }
+import cats.data.{ Coproduct, Kleisli, Xor, XorT }
 import cats.free.{ Coyoneda, Free }
 import cats.implicits._
 
@@ -55,9 +54,10 @@ object KleisliTest1 extends App {
 trait FreeCSupport {
   type FreeC[F[_], A] = Free[Coyoneda[F,?], A]
   def liftFC[F[_], A](value: F[A]): FreeC[F, A] = Free.liftF[Coyoneda[F, ?], A](Coyoneda.lift[F, A](value))
-  def runFC[F[_], A](prog: FreeC[F, A])(implicit interp: NaturalTransformation[F, Id]): A = {
-    prog.go { sfsa: Coyoneda[F, FreeC[F,A]] =>
-      sfsa.transform(interp).run
+  def runFC[F[_], G[_], A](prog: FreeC[F, A], interp: NaturalTransformation[F, G])(implicit G: Monad[G]): G[A] = {
+    prog.runM { sfsa: Coyoneda[F, FreeC[F,A]] =>
+      val x: G[FreeC[F, A]] = sfsa.transform(interp).run
+      x
     }
   }
 
@@ -139,7 +139,7 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
 
   implicit def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[Program, T]) = lifter(x)
 
-  def prog(interp: NaturalTransformation[Program, Id]): Int = {
+  def prog(interp: NaturalTransformation[Program, Id]): Id[Int] = {
 
     val _prog = for {
       button        <- ButtonPressed
@@ -149,7 +149,7 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
       _             <- CallElevator(currentFloor2 + 1)
     } yield currentFloor2
 
-    runFC(_prog)(interp)
+    runFC(_prog, interp)
   }
 
   // Just figure it out, please.
