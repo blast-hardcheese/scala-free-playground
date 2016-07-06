@@ -96,7 +96,7 @@ case class QueueFloor(x: Int) extends ElevatorControl[Unit]
 trait FreeCTest1Interp {
   type LoggingId[A] = WriterT[Id, List[String], A]
 
-  def log[T](value: T)(msg: String)(implicit F: Functor[Id]): LoggingId[T] = WriterT.putT[Id, List[String], T](value)(List("Nothing"))
+  def log[T](value: T)(msg: String)(implicit F: Functor[Id]): LoggingId[T] = WriterT.putT[Id, List[String], T](value)(List(msg))
   implicit def noLog[T](value: T): LoggingId[T] = WriterT.putT[Id, List[String], T](value)(List.empty)
 
   implicit val loggingIdInterp = new NaturalTransformation[LoggingId, Id] {
