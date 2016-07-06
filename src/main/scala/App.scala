@@ -127,7 +127,10 @@ trait FreeCTest1Interp {
 
   implicit val motorControlInterp = new NaturalTransformation[MotorControl, LoggingId] {
     def apply[A](fa: MotorControl[A]): LoggingId[A] = fa match {
-      case GetSpeed => 5
+      case GetSpeed => for {
+          randomValue <- log(5)("Generating totally random number")
+          _           <- log(())("Killing time")
+        } yield randomValue
       case SetSpeed(speed) => ()
     }
   }
