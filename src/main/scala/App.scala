@@ -129,8 +129,10 @@ trait FreeCTest1Interp {
     def apply[A](fa: MotorControl[A]): LoggingId[A] = fa match {
       case GetSpeed => for {
           randomValue <- log(5)("Generating totally random number")
+          result      <- randomValue + 3 // Automatically lifted via noLog
           _           <- log(())("Killing time")
-        } yield randomValue
+          _           <- log(())(s"Turns out speed was $result the whole time!")
+        } yield result
       case SetSpeed(speed) => ()
     }
   }
