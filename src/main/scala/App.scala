@@ -103,34 +103,34 @@ trait FreeCTest1Interp {
     def apply[A](fa: LoggingId[A]): Id[A] = { println(s"Logged: ${fa.written}"); fa.value }
   }
 
-  implicit val controlPanelInterp: NaturalTransformation[ControlPanel, Id] = new NaturalTransformation[ControlPanel, LoggingId] {
+  implicit val controlPanelInterp = new NaturalTransformation[ControlPanel, LoggingId] {
     def apply[A](fa: ControlPanel[A]): LoggingId[A] = fa match {
       case ButtonPressed => log(Button("Floor 2"))("Pressed floor 2")
       case StopEnabled => log(())("Stop enabled")
       case StopDisabled => log(())("Stop disabled")
       case CurrentFloor => log(2)("Got current floor")
     }
-  } andThen loggingIdInterp
+  }
 
   implicit val elevatorControlInterp = new NaturalTransformation[ElevatorControl, LoggingId] {
     def apply[A](fa: ElevatorControl[A]): LoggingId[A] = fa match {
       case GetFloor => 2
       case QueueFloor(floor) => ()
     }
-  } andThen loggingIdInterp
+  }
 
   implicit val callButtonInterp = new NaturalTransformation[CallButton, LoggingId] {
     def apply[A](fa: CallButton[A]): LoggingId[A] = fa match {
-      case CallElevator(floor) => ()
+      case CallElevator(floor) => log(())(s"Elevator called to floor $floor")
     }
-  } andThen loggingIdInterp
+  }
 
   implicit val motorControlInterp = new NaturalTransformation[MotorControl, LoggingId] {
     def apply[A](fa: MotorControl[A]): LoggingId[A] = fa match {
       case GetSpeed => 5
       case SetSpeed(speed) => ()
     }
-  } andThen loggingIdInterp
+  }
 }
 
 object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
@@ -148,17 +148,18 @@ object FreeCTest1 extends App with FreeCSupport with FreeCTest1Interp {
 
   implicit def lift[F[_], T](x: F[T])(implicit lifter: F[T] => FreeC[Program, T]) = lifter(x)
 
-  def prog(interp: NaturalTransformation[Program, Id]): Id[Int] = {
+  def prog(interp: NaturalTransformation[Program, LoggingId]): Id[Int] = {
 
     val _prog = for {
       button        <- ButtonPressed
       currentFloor2 <- GetFloor
       speed         <- GetSpeed
+      _             <- StopEnabled
       currentFloor  <- CurrentFloor
       _             <- CallElevator(currentFloor2 + 1)
     } yield currentFloor2
 
-    runFC(_prog, interp)
+    loggingIdInterp(runFC(_prog, interp))
   }
 
   // Just figure it out, please.
